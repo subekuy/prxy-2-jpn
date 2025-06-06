@@ -54,72 +54,80 @@ const audioUrl = formData.get("audio")?.trim()
     // ==========================
     // 3. PROXY /ALIAS/ID/...
     // ==========================
-    const match = path.match(/^\/([a-zA-Z0-9_-]+)\/([a-z0-9_-]+)(\/.*)?$/)
+    const match = path.match(/^\/([a-zA-Z0-9_-]+)\/([a-z0-9_-]+)(?:\/(video|audio))?(\/.*)?$/);
 if (match) {
-  const alias = match[1]
-  const id = match[2]
-  const relPath = match[3]?.slice(1) || ""
+  const alias = match[1];
+  const id = match[2];
+  const typePrefix = match[3]; // optional: "video" atau "audio"
+  const relPath = match[4]?.slice(1) || "";
 
   const entry = await env.PROXY_KE2.get(`proxy:${alias}:${id}`, "json")
   if (!entry || !entry.video) return new Response("Not found", { status: 404 })
 
-  let base;
-if (relPath.startsWith("audio") || relPath.includes("/audio/") || relPath.includes("ts_audio") || relPath.endsWith("audio.m3u8")) {
-  base = new URL(entry.audio);
-} else {
-  base = new URL(entry.video);
-}
-const targetUrl = relPath ? new URL(relPath, base) : base;
+  // ↓↓↓ fix: pilih base & sourceType
+  let base, sourceType;
+  if (typePrefix === "audio" || relPath.includes("audio") || relPath.includes("ts_audio")) {
+    base = new URL(entry.audio);
+    sourceType = "audio";
+  } else {
+    base = new URL(entry.video);
+    sourceType = "video";
+  }
 
-  const rangeHeader = request.headers.get("Range")
+  const targetUrl = relPath ? new URL(relPath, base) : base;
+
+  const rangeHeader = request.headers.get("Range");
   const originResp = await fetch(targetUrl.href, {
     headers: rangeHeader ? { "Range": rangeHeader } : {}
-  })
+  });
 
-  const contentType = originResp.headers.get("Content-Type") || ""
+  const contentType = originResp.headers.get("Content-Type") || "";
 
+  // ========= master.m3u8 → gabungan audio+video =========
   if (relPath.toLowerCase() === "index.m3u8") {
-    const { video, audio } = entry
+    const { video, audio } = entry;
     const master = `#EXTM3U
 #EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="Audio",DEFAULT=YES,AUTOSELECT=YES,URI="/${alias}/${id}/audio.m3u8"
 #EXT-X-STREAM-INF:BANDWIDTH=3000000,AUDIO="audio"
-/${alias}/${id}/video.m3u8`
+/${alias}/${id}/video.m3u8`;
 
     return new Response(master, {
       headers: {
         "Content-Type": "application/vnd.apple.mpegurl",
         "Access-Control-Allow-Origin": "*"
       }
-    })
+    });
   }
 
+  // ========= playlist .m3u8 video/audio =========
   if (targetUrl.pathname.endsWith(".m3u8")) {
-    const text = await originResp.text()
+    const text = await originResp.text();
 
     const rewritten = text.replace(/^(?!#)([^\s?#]+)(.*)$/gm, (_, segment, extra) => {
-      return `/${alias}/${id}/${segment}${extra}`
-    })
+      return `/${alias}/${id}/${sourceType}/${segment}${extra}`;
+    });
 
     return new Response(rewritten, {
       headers: {
         "Content-Type": "application/vnd.apple.mpegurl",
         "Access-Control-Allow-Origin": "*"
       }
-    })
+    });
   }
 
-  const headers = new Headers(originResp.headers)
-  headers.set("Access-Control-Allow-Origin", "*")
-  headers.set("Accept-Ranges", "bytes")
+  // ========= segmen .ts atau file lainnya =========
+  const headers = new Headers(originResp.headers);
+  headers.set("Access-Control-Allow-Origin", "*");
+  headers.set("Accept-Ranges", "bytes");
 
   if (originResp.ok && entry.filename) {
-    headers.set("Content-Disposition", `inline; filename="${entry.filename}"`)
+    headers.set("Content-Disposition", `inline; filename="${entry.filename}"`);
   }
 
   return new Response(originResp.body, {
     status: originResp.status,
     headers
-  })
+  });
 }
 
     // ==========================
