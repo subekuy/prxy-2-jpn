@@ -41,7 +41,7 @@ export default {
       }
 
       const id = Math.random().toString(36).slice(2, 8)
-      await env.PROXY_URL.put(`proxy:${alias}:${id}`, JSON.stringify({ url: videoUrl, filename }))
+      await env.PROXY_KE2.put(`proxy:${alias}:${id}`, JSON.stringify({ url: videoUrl, filename }))
 
       const shortlink = `${url.origin}/${alias}/${id}`
       return new Response(`Shortlink created: <a href="${shortlink}">${shortlink}</a>`, {
@@ -58,7 +58,7 @@ export default {
       const id = match[2]
       const relPath = match[3]?.slice(1) || ""
 
-      const entry = await env.PROXY_URL.get(`proxy:${alias}:${id}`, "json")
+      const entry = await env.PROXY_KE2.get(`proxy:${alias}:${id}`, "json")
       if (!entry || !entry.url) return new Response("Not found", { status: 404 })
 
       const base = new URL(entry.url)
