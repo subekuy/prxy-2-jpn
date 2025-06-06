@@ -7,5 +7,5 @@ routes = [
 ]
 
 [[kv_namespaces]]
-binding = "PROXY_KE2"
-id = "b072b4c57918484aa144603d20902d74"
+binding = "PROXY_MAP"
+id = "626fbf5b319745908eae065e1a99befd"

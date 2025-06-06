@@ -1,7 +1,20 @@
 export default async function handleSegment(env, alias, segFile) {
   const segId = segFile.replace(/\.ts$/, '')
-  const url = await env.PROXY_KE2.get(`${alias}:seg:${segId}`)
 
+  // Ambil seluruh mapping
+  const mapJson = await env.PROXY_MAP.get(`${alias}:map`)
+  if (!mapJson) {
+    return new Response('Mapping not found', { status: 404 })
+  }
+
+  let map
+  try {
+    map = JSON.parse(mapJson)
+  } catch (e) {
+    return new Response('Invalid map format', { status: 500 })
+  }
+
+  const url = map.seg?.[segId]
   if (!url) {
     return new Response('Segment not found', { status: 404 })
   }
@@ -12,7 +25,7 @@ export default async function handleSegment(env, alias, segFile) {
   }
 
   const headers = new Headers(res.headers)
-  headers.set('Content-Type', 'video/MP2T') // MIME type TS
+  headers.set('Content-Type', 'video/MP2T') // TS segment MIME
 
   return new Response(res.body, {
     status: res.status,

@@ -1,7 +1,20 @@
 export default async function handleKey(env, alias, keyFile) {
   const keyId = keyFile.replace(/\.key$/, '')
-  const url = await env.PROXY_KE2.get(`${alias}:key:${keyId}`)
 
+  // Ambil mapping utama
+  const mapJson = await env.PROXY_MAP.get(`${alias}:map`)
+  if (!mapJson) {
+    return new Response('Mapping not found', { status: 404 })
+  }
+
+  let map
+  try {
+    map = JSON.parse(mapJson)
+  } catch (e) {
+    return new Response('Invalid map format', { status: 500 })
+  }
+
+  const url = map.key?.[keyId]
   if (!url) {
     return new Response('Key not found', { status: 404 })
   }
