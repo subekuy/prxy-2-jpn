@@ -64,14 +64,12 @@ if (match) {
   if (!entry || !entry.video) return new Response("Not found", { status: 404 })
 
   let base;
-  if (relPath.toLowerCase() === "audio.m3u8") {
-    if (!entry.audio) return new Response("Audio not found", { status: 404 })
-    base = new URL(entry.audio)
-  } else {
-    base = new URL(entry.video)
-  }
-
-  const targetUrl = relPath ? new URL(relPath, base) : base
+if (relPath.startsWith("audio") || relPath.includes("/audio/") || relPath.includes("ts_audio") || relPath.endsWith("audio.m3u8")) {
+  base = new URL(entry.audio);
+} else {
+  base = new URL(entry.video);
+}
+const targetUrl = relPath ? new URL(relPath, base) : base;
 
   const rangeHeader = request.headers.get("Range")
   const originResp = await fetch(targetUrl.href, {
