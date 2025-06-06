@@ -1,52 +1,45 @@
+import handleFormPage from './input'
+import handleSubmit from './submit'
+import handleM3U8 from './m3u8'
+import handleSegment from './segment'
+import handleKey from './key'
+
 export default {
-  async fetch(request) {
-    const url = new URL(request.url);
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url)
+    const { pathname } = url
 
-    const srcUrl = url.searchParams.get('url');
-    const base = url.searchParams.get('base');
-    const seg = url.searchParams.get('seg');
-
-    // Handle request untuk segmen .ts
-    if (base && seg) {
-      const tsUrl = decodeURIComponent(base) + decodeURIComponent(seg);
-      return fetch(tsUrl, {
-        headers: {
-          'Referer': decodeURIComponent(base), // lebih aman dikirim
-        }
-      });
+    // INPUT PAGE: GET /
+    if (request.method === 'GET' && pathname === '/') {
+      return handleFormPage()
     }
 
-    // Handle request untuk file .m3u8
-    if (srcUrl) {
-      const res = await fetch(srcUrl);
-      if (!res.ok) return new Response("Failed to fetch m3u8", { status: 502 });
-
-      const baseURL = srcUrl.split('/').slice(0, -1).join('/') + '/';
-      const text = await res.text();
-
-      const proxied = text.split('\n').map(line => {
-        line = line.trim();
-        if (line === '' || line.startsWith('#')) return line;
-
-        try {
-          const parsed = new URL(line);
-          // Jika baris adalah URL absolut
-          const segPath = parsed.pathname.split('/').pop() + (parsed.search || '');
-          const basePath = parsed.href.slice(0, parsed.href.lastIndexOf('/') + 1);
-          return `${url.origin}/proxy?base=${encodeURIComponent(basePath)}&seg=${encodeURIComponent(segPath)}`;
-        } catch {
-          // Jika baris relatif
-          return `${url.origin}/proxy?base=${encodeURIComponent(baseURL)}&seg=${encodeURIComponent(line)}`;
-        }
-      }).join('\n');
-
-      return new Response(proxied, {
-        headers: {
-          'Content-Type': 'application/vnd.apple.mpegurl',
-        },
-      });
+    // FORM SUBMIT: POST /submit
+    if (request.method === 'POST' && pathname === '/submit') {
+      return handleSubmit(request, env)
     }
 
-    return new Response("Usage: /proxy?url=...", { status: 400 });
+    // FETCH M3U8: GET /alias/index.m3u8
+    const m3u8Match = pathname.match(/^\/([^/]+)\/index\.m3u8$/)
+    if (m3u8Match) {
+      const alias = m3u8Match[1]
+      return handleM3U8(request, env, alias)
+    }
+
+    // FETCH SEGMENT: GET /alias/s/seg123.ts
+    const segMatch = pathname.match(/^\/([^/]+)\/s\/([a-zA-Z0-9]+\.ts)$/)
+    if (segMatch) {
+      const [_, alias, segId] = segMatch
+      return handleSegment(env, alias, segId)
+    }
+
+    // FETCH KEY: GET /alias/key/xyz123.key
+    const keyMatch = pathname.match(/^\/([^/]+)\/key\/([a-zA-Z0-9]+\.key)$/)
+    if (keyMatch) {
+      const [_, alias, keyId] = keyMatch
+      return handleKey(env, alias, keyId)
+    }
+
+    return new Response('Not Found', { status: 404 })
   }
 }

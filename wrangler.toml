@@ -5,3 +5,7 @@ compatibility_date = "2025-06-05"
 routes = [
   "link.okecyu.my.id/*"
 ]
+
+[[kv_namespaces]]
+binding = "PROXY_KE2"
+id = "b072b4c57918484aa144603d20902d74"
