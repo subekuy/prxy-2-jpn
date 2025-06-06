@@ -55,70 +55,74 @@ const audioUrl = formData.get("audio")?.trim()
     // 3. PROXY /ALIAS/ID/...
     // ==========================
     const match = path.match(/^\/([a-zA-Z0-9_-]+)\/([a-z0-9_-]+)(\/.*)?$/)
-    if (match) {
-      const alias = match[1] // toUpperCase()
-      const id = match[2]
-      const relPath = match[3]?.slice(1) || ""
+if (match) {
+  const alias = match[1]
+  const id = match[2]
+  const relPath = match[3]?.slice(1) || ""
 
-      const entry = await env.PROXY_KE2.get(`proxy:${alias}:${id}`, "json")
-      if (!entry || !entry.video) return new Response("Not found", { status: 404 })
+  const entry = await env.PROXY_KE2.get(`proxy:${alias}:${id}`, "json")
+  if (!entry || !entry.video) return new Response("Not found", { status: 404 })
 
-const base = new URL(entry.video)
-      const targetUrl = relPath ? new URL(relPath, base) : base
+  let base;
+  if (relPath.toLowerCase() === "audio.m3u8") {
+    if (!entry.audio) return new Response("Audio not found", { status: 404 })
+    base = new URL(entry.audio)
+  } else {
+    base = new URL(entry.video)
+  }
 
-      const rangeHeader = request.headers.get("Range")
-      const originResp = await fetch(targetUrl.href, {
-        headers: rangeHeader ? { "Range": rangeHeader } : {}
-      })
+  const targetUrl = relPath ? new URL(relPath, base) : base
 
-      const contentType = originResp.headers.get("Content-Type") || ""
+  const rangeHeader = request.headers.get("Range")
+  const originResp = await fetch(targetUrl.href, {
+    headers: rangeHeader ? { "Range": rangeHeader } : {}
+  })
 
-      // Kalau .m3u8 → parse & rewrite
-if (relPath.toLowerCase() === "index.m3u8") {
-  // playlist master gabungan
-  const { video, audio } = entry
-  const master = `#EXTM3U
+  const contentType = originResp.headers.get("Content-Type") || ""
+
+  if (relPath.toLowerCase() === "index.m3u8") {
+    const { video, audio } = entry
+    const master = `#EXTM3U
 #EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="Audio",DEFAULT=YES,AUTOSELECT=YES,URI="/${alias}/${id}/audio.m3u8"
 #EXT-X-STREAM-INF:BANDWIDTH=3000000,AUDIO="audio"
 /${alias}/${id}/video.m3u8`
 
-  return new Response(master, {
-    headers: {
-      "Content-Type": "application/vnd.apple.mpegurl",
-      "Access-Control-Allow-Origin": "*"
-    }
-  })
-}
-      // ambil playlist video/audio → rewrite segmennya
-if (targetUrl.pathname.endsWith(".m3u8")) {
-  const text = await originResp.text()
-
-  const rewritten = text.replace(/^(?!#)([^\s?#]+)(.*)$/gm, (_, segment, extra) => {
-    return `/${alias}/${id}/${segment}${extra}`
-  })
-
-  return new Response(rewritten, {
-    headers: {
-      "Content-Type": "application/vnd.apple.mpegurl",
-      "Access-Control-Allow-Origin": "*"
-    }
-  })
-}
-
-      // Kalau .ts atau file lain → stream langsung
-      const headers = new Headers(originResp.headers)
-      headers.set("Access-Control-Allow-Origin", "*")
-      headers.set("Accept-Ranges", "bytes")
-
-      if (originResp.ok && entry.filename) {
-        headers.set("Content-Disposition", `inline; filename="${entry.filename}"`)
+    return new Response(master, {
+      headers: {
+        "Content-Type": "application/vnd.apple.mpegurl",
+        "Access-Control-Allow-Origin": "*"
       }
+    })
+  }
 
-      return new Response(originResp.body, {
-        status: originResp.status,
-        headers
-      })
-    }
+  if (targetUrl.pathname.endsWith(".m3u8")) {
+    const text = await originResp.text()
+
+    const rewritten = text.replace(/^(?!#)([^\s?#]+)(.*)$/gm, (_, segment, extra) => {
+      return `/${alias}/${id}/${segment}${extra}`
+    })
+
+    return new Response(rewritten, {
+      headers: {
+        "Content-Type": "application/vnd.apple.mpegurl",
+        "Access-Control-Allow-Origin": "*"
+      }
+    })
+  }
+
+  const headers = new Headers(originResp.headers)
+  headers.set("Access-Control-Allow-Origin", "*")
+  headers.set("Accept-Ranges", "bytes")
+
+  if (originResp.ok && entry.filename) {
+    headers.set("Content-Disposition", `inline; filename="${entry.filename}"`)
+  }
+
+  return new Response(originResp.body, {
+    status: originResp.status,
+    headers
+  })
+}
 
     // ==========================
     // 404 fallback
