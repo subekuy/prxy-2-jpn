@@ -103,9 +103,20 @@ if (match) {
   if (targetUrl.pathname.endsWith(".m3u8")) {
     const text = await originResp.text();
 
-    const rewritten = text.replace(/^(?!#)([^\s?#]+)(.*)$/gm, (_, segment, extra) => {
-      return `/${alias}/${id}/${sourceType}/${segment}${extra}`;
-    });
+const rewritten = text.replace(/^(?!#)(.+)$/gm, (line) => {
+  if (line.startsWith("http://") || line.startsWith("https://")) {
+    try {
+      const u = new URL(line);
+      return `/${alias}/${id}/${sourceType}${u.pathname}${u.search}`;
+    } catch (err) {
+      return line; // biarkan kalau gak valid
+    }
+  } else if (!line.startsWith("#")) {
+    return `/${alias}/${id}/${sourceType}/${line}`;
+  } else {
+    return line;
+  }
+});
 
     return new Response(rewritten, {
       headers: {
