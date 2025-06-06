@@ -37,7 +37,7 @@ export default async function handleM3U8(request, env, alias) {
     if (!line.startsWith('#') && line.trim() !== '') {
       const segUrl = new URL(line, originalUrl).href // handle relative path
       const segId = nanoid()
-      await env.PROXY_K2.put(`${alias}:seg:${segId}`, segUrl)
+      await env.PROXY_KE2.put(`${alias}:seg:${segId}`, segUrl)
       rewritten.push(`/${alias}/s/${segId}.ts`)
       segCounter++
     } else {
@@ -46,4 +46,8 @@ export default async function handleM3U8(request, env, alias) {
   }
 
   return new Response(rewritten.join('\n'), {
-    headers
+    headers: {
+      'Content-Type': 'application/vnd.apple.mpegurl'
+    }
+  })
+}
