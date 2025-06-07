@@ -40,6 +40,14 @@ export default async function handleM3U8(request, env, alias) {
 
   // VOD mode
   return new Response(data.final, {
-    headers: { 'Content-Type': 'application/vnd.apple.mpegurl' }
+    headers: {
+        'Content-Type': 'application/vnd.apple.mpegurl',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Origin, Range, Content-Type, Accept',
+        'Access-Control-Expose-Headers': 'Content-Length',
+        'Accept-Ranges': 'bytes'
+        
+        }
   })
 }
