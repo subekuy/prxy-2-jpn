@@ -21,32 +21,34 @@ export default async function handleSubmit(request, env) {
   const keyMap = {}
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
+  const line = lines[i]
 
-    if (line.startsWith('#EXT-X-KEY')) {
-  const uriMatch = line.match(/URI="([^"]+)"/)
-  if (uriMatch) {
-    const keyUrl = new URL(uriMatch[1], url).href
-    const keyId = nanoid()
-    keyMap[keyId] = keyUrl
-    const newLine = line.replace(uriMatch[1], `/${alias}/key/${keyId}.key`)
-    rewritten.push(newLine)
-    continue
+  if (line.startsWith('#EXT-X-KEY')) {
+    const uriMatch = line.match(/URI="([^"]+)"/)
+    if (uriMatch) {
+      const keyUrl = new URL(uriMatch[1], url).href
+      const keyId = nanoid()
+      keyMap[keyId] = keyUrl
+      const newLine = line.replace(uriMatch[1], `/${alias}/key/${keyId}.key`)
+      rewritten.push(newLine)
+      continue
+    }
   }
-}
 
-        if (!line.startsWith('#') && line.trim() !== '') {
-  try {
-    const segUrl = new URL(line, url).href
-    const segId = nanoid()
-    segMap[segId] = segUrl
-    rewritten.push(`/${alias}/s/${segId}.ts`)
-  } catch (err) {
-    // Abaikan baris yang gak valid
+  if (!line.startsWith('#') && line.trim() !== '') {
+    try {
+      const segUrl = new URL(line, url).href
+      const segId = nanoid()
+      segMap[segId] = segUrl
+      rewritten.push(`/${alias}/s/${segId}.ts`)
+    } catch {
+      rewritten.push(line)
+    }
+  } else {
+    // Tambahkan baris komentar atau metadata apa adanya
     rewritten.push(line)
   }
 }
-  }
 
   const mapping = JSON.stringify({
     m3u8: url,
