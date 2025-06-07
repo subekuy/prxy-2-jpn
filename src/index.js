@@ -1,5 +1,5 @@
-import handleFormPage from './input'
-import handleSubmit from './submit'
+import handleFormPage from './input' // form html
+import handleSubmit from './submit' // vod
 import handleM3U8 from './m3u8'
 import handleSegment from './segment'
 import handleKey from './key'
