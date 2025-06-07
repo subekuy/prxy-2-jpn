@@ -25,11 +25,9 @@ export default async function handleSegment(env, alias, segFile) {
   }
 
   const headers = new Headers(res.headers)
-    Headers(res.headers);
     headers.set('Content-Type', 'video/mp2t')
     headers.set('Access-Control-Allow-Origin', '*')
     headers.set('Accept-Ranges', 'bytes')
-    
   return new Response(res.body, {
     status: res.status,
     headers
