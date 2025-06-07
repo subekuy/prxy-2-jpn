@@ -23,17 +23,17 @@ export default async function handleSubmit(request, env) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
 
-    if (line.startsWith('#EXT-X-KEY')) {
-      const uriMatch = line.match(/URI="([^"]+)"/)
-      if (uriMatch) {
-        const keyUrl = uriMatch[1]
-        const keyId = nanoid()
-        keyMap[keyId] = keyUrl
-        const newLine = line.replace(uriMatch[1], `/${alias}/key/${keyId}.key`)
-        rewritten.push(newLine)
-        continue
-      }
-    }
+    if (!line.startsWith('#') && line.trim() !== '') {
+  try {
+    const segUrl = new URL(line, url).href
+    const segId = nanoid()
+    segMap[segId] = segUrl
+    rewritten.push(`/${alias}/s/${segId}.ts`)
+  } catch (err) {
+    // Abaikan baris yang gak valid
+    rewritten.push(line)
+  }
+}
 
     if (!line.startsWith('#') && line.trim() !== '') {
       const segUrl = new URL(line, url).href
